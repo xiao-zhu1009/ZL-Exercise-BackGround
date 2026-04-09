@@ -6,8 +6,10 @@
 #   - main.py 导入 engine + Base 在启动时建表
 #   - api/*.py 通过 Depends(get_db) 获取数据库会话
 
+from datetime import datetime
+from sqlalchemy import Integer, SmallInteger, DateTime
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base, Mapped, mapped_column
 from core.config import settings
 
 # 异步引擎：echo=True 会在控制台打印 SQL，调试时方便，生产可改为 False
@@ -19,6 +21,15 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 # 所有 ORM 模型的基类，models/*.py 里的 class User(Base) 都继承它
 Base = declarative_base()
+
+# 公共字段抽象基类：所有业务表继承此类，自动获得 id/created_at/updated_at/is_deleted
+class BaseModel(Base):
+    __abstract__ = True  # 声明为抽象类，不会生成数据库表
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+    is_deleted: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
 
 # FastAPI 依赖函数：用 yield 保证请求结束后自动关闭 session
 # 用法：在路由函数参数里写 db: AsyncSession = Depends(get_db)

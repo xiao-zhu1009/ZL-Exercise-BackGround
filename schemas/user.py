@@ -10,10 +10,19 @@ from typing import Optional
 # ── 请求体 ──────────────────────────────────────────────
 
 class LoginForm(BaseModel):
-    username: str
+    account: str   # 账号或手机号
     password: str
 
+class SendCodeForm(BaseModel):
+    phone: str
+
+class VerifyCodeForm(BaseModel):
+    phone: str
+    code: str
+
 class RegisterForm(BaseModel):
+    phone: str
+    code: str
     username: str
     password: str
     nickname: Optional[str] = None

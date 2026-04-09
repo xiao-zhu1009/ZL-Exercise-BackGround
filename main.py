@@ -22,7 +22,7 @@ from api.test import router as test_router
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         # 注意：models 必须在这里之前被 import，否则 Base 不知道有哪些表
-        from models import user  # noqa: F401 —— 触发模型注册到 Base
+        import models  # noqa: F401 —— 触发所有模型注册到 Base
         await conn.run_sync(Base.metadata.create_all)
     yield  # yield 之后的代码在应用关闭时执行（此处无需清理）
 
