@@ -4,6 +4,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 
 from db.session import engine, Base
@@ -26,6 +27,9 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_exception_handler(HTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+# 用户上传头像等静态资源（URL: /api/static/...）
+app.mount("/api/static", StaticFiles(directory="static"), name="static")
 
 # 允许前端跨域请求
 app.add_middleware(

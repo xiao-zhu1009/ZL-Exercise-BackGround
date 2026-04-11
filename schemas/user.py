@@ -41,6 +41,7 @@ class ProfileUpdate(BaseModel):
     nickname: Optional[str] = None
     phone: Optional[str] = None
     signature: Optional[str] = None
+    avatar: Optional[str] = None  # 传空字符串 "" 表示恢复默认头像
 
 class BodyStatsUpdate(BaseModel):
     height: Optional[float] = None

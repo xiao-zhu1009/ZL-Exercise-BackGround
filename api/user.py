@@ -1,7 +1,10 @@
 # api/user.py
-# 用户路由：个人信息、身体指标、修改密码
+# 用户路由：个人信息、身体指标、修改密码、头像上传
 
-from fastapi import APIRouter, Depends
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
@@ -31,10 +34,50 @@ async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncS
 
 @router.put("/profile")
 async def update_profile(form: ProfileUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    """修改个人信息"""
+    """修改个人信息（body 里带 avatar: \"\" 可恢复默认头像）"""
     user = await get_user_by_id(db, current_user["user_id"])
-    await update_user_profile(db, user, form.nickname, form.phone, form.signature)
+    data = form.model_dump(exclude_unset=True)
+    await update_user_profile(db, user, **data)
     return success(None, "保存成功")
+
+
+_AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_AVATAR_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+_MAX_AVATAR_BYTES = 2 * 1024 * 1024
+
+
+@router.post("/avatar")
+async def upload_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """上传自定义头像，返回可访问 URL 并写入 users.avatar"""
+    if file.content_type not in _AVATAR_TYPES:
+        return json_fail("请上传 JPG、PNG、GIF 或 WebP 图片", 400)
+    user = await get_user_by_id(db, current_user["user_id"])
+    if not user:
+        return json_fail("用户不存在", 404)
+
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in _AVATAR_EXT:
+        ext = ".jpg" if file.content_type == "image/jpeg" else ".png"
+
+    raw = await file.read()
+    if len(raw) > _MAX_AVATAR_BYTES:
+        return json_fail("图片不能超过 2MB", 400)
+
+    upload_dir = Path("static/avatars")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = f"{user.id}_{uuid4().hex}{ext}"
+    dest = upload_dir / safe_name
+    dest.write_bytes(raw)
+
+    base = str(request.base_url).rstrip("/")
+    url = f"{base}/api/static/avatars/{safe_name}"
+    await update_user_profile(db, user, avatar=url)
+    return success({"avatar": url}, "头像已更新")
 
 
 @router.get("/body-stats")

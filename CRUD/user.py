@@ -43,14 +43,16 @@ async def create_user(db: AsyncSession, username: str, password: str, phone: str
     return user
 
 
-async def update_user_profile(db: AsyncSession, user: User, nickname: str = None, phone: str = None, signature: str = None):
-    """更新用户基本信息（只更新传入的字段）"""
-    if nickname is not None:
-        user.nickname = nickname
-    if phone is not None:
-        user.phone = phone
-    if signature is not None:
-        user.signature = signature
+async def update_user_profile(db: AsyncSession, user: User, **fields):
+    """只更新 fields 中出现的键（由路由层用 model_dump(exclude_unset=True) 传入）"""
+    if "nickname" in fields and fields["nickname"] is not None:
+        user.nickname = fields["nickname"]
+    if "phone" in fields and fields["phone"] is not None:
+        user.phone = fields["phone"]
+    if "signature" in fields and fields["signature"] is not None:
+        user.signature = fields["signature"]
+    if "avatar" in fields:
+        user.avatar = fields["avatar"] or ""
     await db.commit()
 
 

@@ -39,6 +39,7 @@ async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
         "username": user.username,
         "role": user.role,
         "nickname": user.nickname,
+        "avatar": user.avatar or "",
         "token": token
     }, "登录成功")
 
