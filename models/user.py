@@ -14,3 +14,5 @@ class User(BaseModel):
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")  # user/coach/admin
     status: Mapped[int] = mapped_column(Integer, nullable=False, default=1) # 0=禁用 1=启用
     goal: Mapped[str] = mapped_column(String(20), nullable=False, default="")
+    signature: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    token: Mapped[str] = mapped_column(String(500), nullable=False, default="")

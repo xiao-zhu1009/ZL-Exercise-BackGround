@@ -24,17 +24,20 @@ async def root():
 @router.post("/login")
 async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
     # 支持账号或手机号登录
+    print('1111')
     result = await db.execute(
         select(User).where(or_(User.username == form.account, User.phone == form.account))
     )
-    user = result.scalar_one_or_none()
-
+    user = result.scalars().first()
+    print('2222')
     if not user:
-        raise HTTPException(status_code=401, detail="账号/手机号不存在")
+        raise HTTPException(status_code=401, detail="账号未注册")
     if user.password != form.password:
         raise HTTPException(status_code=401, detail="密码错误")
 
     token = create_access_token({"user_id": user.id, "role": user.role})
+    user.token = token
+    await db.commit()
     return success({
         "id": user.id,
         "username": user.username,

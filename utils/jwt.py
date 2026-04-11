@@ -6,6 +6,7 @@
 #   - utils/deps.py 校验请求时调用 decode_token 解析 Token
 
 from datetime import datetime, timedelta
+from uuid import uuid4
 from jose import jwt
 from core.config import settings
 
@@ -13,7 +14,8 @@ def create_access_token(data: dict) -> str:
     """签发 Token：将 payload 加上过期时间后用密钥签名"""
     payload = {
         **data,
-        "exp": datetime.utcnow() + timedelta(minutes=settings.TOKEN_EXPIRE_MINUTES)
+        "exp": datetime.utcnow() + timedelta(minutes=settings.TOKEN_EXPIRE_MINUTES),
+        "jti": uuid4().hex  # 唯一标识，防止不同用户同秒登录生成相同 token
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

@@ -37,3 +37,19 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True  # 允许从 ORM 对象直接转换（SQLAlchemy model → Pydantic）
+
+class ProfileUpdate(BaseModel):
+    nickname: Optional[str] = None
+    phone: Optional[str] = None
+    signature: Optional[str] = None
+
+class BodyStatsUpdate(BaseModel):
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    body_fat: Optional[float] = None
+    waist: Optional[float] = None
+    hip: Optional[float] = None
+
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str

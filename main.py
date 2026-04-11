@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from db.session import engine, Base
 from api.auth import router as auth_router
 from api.test import router as test_router
+from api.user import router as user_router
 
 # lifespan：替代旧版 @app.on_event("startup")，在应用启动/关闭时执行
 # create_all：根据所有继承 Base 的 ORM 模型自动建表（表已存在则跳过）
@@ -40,3 +41,4 @@ app.add_middleware(
 # 挂载路由，prefix 已在各 router 内定义（如 /auth）
 app.include_router(auth_router, prefix="/ZL-API")
 app.include_router(test_router, prefix="/ZL-API")
+app.include_router(user_router, prefix="/ZL-API")
