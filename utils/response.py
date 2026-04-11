@@ -1,10 +1,17 @@
 # utils/response.py
-# 职责：统一接口响应格式 { code, msg, data }，与前端约定保持一致
-# 依赖：无
-# 被依赖：api/*.py 所有路由函数用 success() / fail() 包装返回值
+# 统一接口响应格式，所有路由用 success() / json_fail() 返回
 
-def success(data=None, msg="success"):
-    return {"code": 200, "msg": msg, "data": data}
+from fastapi.responses import JSONResponse
 
-def fail(msg="error", code=400):
-    return {"code": code, "msg": msg, "data": None}
+
+def success(data=None, message="success"):
+    return {"code": 200, "message": message, "data": data}
+
+
+def fail(message="error", code=400):
+    return {"code": code, "message": message, "data": None}
+
+
+def json_fail(message="error", code=400):
+    """业务错误：HTTP 状态码与 body.code 一致，便于前端按统一信封解析。"""
+    return JSONResponse(status_code=code, content=fail(message, code))

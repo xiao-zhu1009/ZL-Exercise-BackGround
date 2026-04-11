@@ -1,43 +1,39 @@
 # api/auth.py
-from fastapi import APIRouter, Depends, HTTPException
+# 认证路由：登录、注册、验证码
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
 
 from db.session import get_db
-from models.user import User
 from schemas.user import LoginForm, RegisterForm, SendCodeForm, VerifyCodeForm
 from utils.jwt import create_access_token
-from utils.response import success
+from utils.response import success, json_fail
+from CRUD.user import (
+    get_user_by_account,
+    check_user_exists,
+    create_user,
+    save_user_token,
+    is_phone_registered,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# 写死的验证码（后续改为真实短信）
+# 测试用验证码，后续替换为真实短信服务
 FAKE_CODE = "123456"
 
 
-@router.get("/")
-async def root():
-    return {"message": "Hello World"}
-
-
-# 登录
 @router.post("/login")
 async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
-    # 支持账号或手机号登录
-    print('1111')
-    result = await db.execute(
-        select(User).where(or_(User.username == form.account, User.phone == form.account))
-    )
-    user = result.scalars().first()
-    print('2222')
+    """登录：支持账号或手机号"""
+    user = await get_user_by_account(db, form.account)
     if not user:
-        raise HTTPException(status_code=401, detail="账号未注册")
+        return json_fail("账号未注册", 401)
     if user.password != form.password:
-        raise HTTPException(status_code=401, detail="密码错误")
+        return json_fail("密码错误", 401)
 
     token = create_access_token({"user_id": user.id, "role": user.role})
-    user.token = token
-    await db.commit()
+    await save_user_token(db, user, token)
+
     return success({
         "id": user.id,
         "username": user.username,
@@ -46,40 +42,33 @@ async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
         "token": token
     }, "登录成功")
 
-# 发送验证码
+
 @router.post("/send-code")
-async def send_code(form: SendCodeForm):
+async def send_code(form: SendCodeForm, db: AsyncSession = Depends(get_db)):
+    """发送验证码（当前为测试模式，固定返回 123456）"""
+    if await is_phone_registered(db, form.phone):
+        return json_fail("该手机号已被注册", 400)
     return success(None, "验证码已发送（测试码：123456）")
 
-# 验证验证码
+
 @router.post("/verify-code")
-async def verify_code(form: VerifyCodeForm):
+async def verify_code(form: VerifyCodeForm, db: AsyncSession = Depends(get_db)):
+    """验证验证码：已注册手机号与错误验证码区分提示"""
+    if await is_phone_registered(db, form.phone):
+        return json_fail("该手机号已被注册", 400)
     if form.code != FAKE_CODE:
-        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+        return json_fail("验证码错误或已过期", 400)
     return success(None, "验证通过")
 
-# 注册
+
 @router.post("/register")
 async def register(form: RegisterForm, db: AsyncSession = Depends(get_db)):
-    # 检查验证码
+    """注册：先验证码校验，再检查账号唯一性，最后创建用户"""
     if form.code != FAKE_CODE:
-        raise HTTPException(status_code=400, detail="请先完成手机验证")
+        return json_fail("请先完成手机验证", 400)
 
-    # 检查账号/手机号是否重复
-    result = await db.execute(
-        select(User).where(or_(User.username == form.username, User.phone == form.phone))
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="账号或手机号已存在")
+    if await check_user_exists(db, form.username, form.phone):
+        return json_fail("账号或手机号已存在", 400)
 
-    user = User(
-        username=form.username,
-        password=form.password,
-        nickname=form.nickname,
-        phone=form.phone
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
+    user = await create_user(db, form.username, form.password, form.phone, form.nickname)
     return success({"id": user.id, "username": user.username}, "注册成功")

@@ -1,24 +1,25 @@
 # api/user.py
-from fastapi import APIRouter, Depends, HTTPException
+# 用户路由：个人信息、身体指标、修改密码
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from db.session import get_db
-from models.user import User
-from models.body_stats import UserBodyStats
 from schemas.user import ProfileUpdate, BodyStatsUpdate, PasswordUpdate
 from utils.deps import get_current_user
-from utils.response import success
+from utils.response import success, json_fail
+from CRUD.user import get_user_by_id, update_user_profile, update_user_password
+from CRUD.body_stats import get_body_stats, upsert_body_stats
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-# 个人主页基本信息获取
+
 @router.get("/profile")
 async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
-    user = result.scalar_one_or_none()
+    """获取个人信息"""
+    user = await get_user_by_id(db, current_user["user_id"])
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        return json_fail("用户不存在", 404)
     return success({
         "username": user.username,
         "nickname": user.nickname,
@@ -26,25 +27,20 @@ async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncS
         "signature": user.signature,
         "avatar": user.avatar
     })
-# 修改个人主页基本信息
+
+
 @router.put("/profile")
 async def update_profile(form: ProfileUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
-    user = result.scalar_one()
-    if form.nickname is not None:
-        user.nickname = form.nickname
-    if form.phone is not None:
-        user.phone = form.phone
-    if form.signature is not None:
-        user.signature = form.signature
-    await db.commit()
+    """修改个人信息"""
+    user = await get_user_by_id(db, current_user["user_id"])
+    await update_user_profile(db, user, form.nickname, form.phone, form.signature)
     return success(None, "保存成功")
 
-# 用户身体指标获取
+
 @router.get("/body-stats")
-async def get_body_stats(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(UserBodyStats).where(UserBodyStats.user_id == current_user["user_id"]))
-    stats = result.scalar_one_or_none()
+async def get_body_stats_api(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """获取身体指标"""
+    stats = await get_body_stats(db, current_user["user_id"])
     if not stats:
         return success(None)
     return success({
@@ -57,27 +53,11 @@ async def get_body_stats(current_user: dict = Depends(get_current_user), db: Asy
         "whr": round(stats.whr, 2) if stats.whr else None
     })
 
-# 用户身体指标修改
+
 @router.put("/body-stats")
 async def update_body_stats(form: BodyStatsUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(UserBodyStats).where(UserBodyStats.user_id == current_user["user_id"]))
-    stats = result.scalar_one_or_none()
-    if not stats:
-        stats = UserBodyStats(user_id=current_user["user_id"])
-        db.add(stats)
-
-    for field in ("height", "weight", "body_fat", "waist", "hip"):
-        val = getattr(form, field)
-        if val is not None:
-            setattr(stats, field, val)
-
-    # 自动计算 bmi 和 whr
-    if stats.height and stats.weight:
-        stats.bmi = stats.weight / ((stats.height / 100) ** 2)
-    if stats.waist and stats.hip:
-        stats.whr = stats.waist / stats.hip
-
-    await db.commit()
+    """修改身体指标，自动计算 BMI 和 WHR"""
+    stats = await upsert_body_stats(db, current_user["user_id"], form)
     return success({
         "bmi": round(stats.bmi, 1) if stats.bmi else None,
         "whr": round(stats.whr, 2) if stats.whr else None
@@ -86,12 +66,11 @@ async def update_body_stats(form: BodyStatsUpdate, current_user: dict = Depends(
 
 @router.put("/password")
 async def update_password(form: PasswordUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """修改密码"""
     if form.old_password == form.new_password:
-        raise HTTPException(status_code=400, detail="新密码不能与旧密码相同")
-    result = await db.execute(select(User).where(User.id == current_user["user_id"]))
-    user = result.scalar_one()
+        return json_fail("新密码不能与旧密码相同", 400)
+    user = await get_user_by_id(db, current_user["user_id"])
     if user.password != form.old_password:
-        raise HTTPException(status_code=400, detail="旧密码错误")
-    user.password = form.new_password
-    await db.commit()
+        return json_fail("旧密码错误", 400)
+    await update_user_password(db, user, form.new_password)
     return success(None, "密码修改成功")

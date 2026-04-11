@@ -1,13 +1,11 @@
 # schemas/user.py
-# 职责：定义接口的请求体和响应体结构，FastAPI 用它做自动校验和文档生成
-# 依赖：无（纯 Pydantic，不依赖项目内其他模块）
-# 被依赖：api/auth.py（路由函数的参数类型和返回类型）
-# 注意：schemas 描述"接口数据形状"，models 描述"数据库表结构"，两者分开维护
+# 接口请求体和响应体的数据结构定义，FastAPI 用它做自动校验
 
 from pydantic import BaseModel
 from typing import Optional
 
-# ── 请求体 ──────────────────────────────────────────────
+
+# ── 认证相关 ──────────────────────────────────────────────
 
 class LoginForm(BaseModel):
     account: str   # 账号或手机号
@@ -27,7 +25,8 @@ class RegisterForm(BaseModel):
     password: str
     nickname: Optional[str] = None
 
-# ── 响应体 ──────────────────────────────────────────────
+
+# ── 用户信息相关 ──────────────────────────────────────────
 
 class UserOut(BaseModel):
     id: int
@@ -36,7 +35,7 @@ class UserOut(BaseModel):
     nickname: Optional[str]
 
     class Config:
-        from_attributes = True  # 允许从 ORM 对象直接转换（SQLAlchemy model → Pydantic）
+        from_attributes = True  # 允许从 ORM 对象直接转换
 
 class ProfileUpdate(BaseModel):
     nickname: Optional[str] = None

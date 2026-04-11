@@ -1,4 +1,6 @@
 # utils/deps.py
+# 鉴权依赖：解析 Token，验证用户是否登录
+
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -11,6 +13,7 @@ from db.session import get_db
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    """解析 Token，返回 payload（含 user_id、role）"""
     try:
         payload = decode_token(token)
     except JWTError:
@@ -18,8 +21,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     from models.user import User
     result = await db.execute(select(User).where(User.id == payload["user_id"], User.token == token))
-    user = result.scalar_one_or_none()
-    if not user:
+    if not result.scalar_one_or_none():
         raise HTTPException(status_code=401, detail="Token 已失效，请重新登录")
 
     return payload
