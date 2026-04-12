@@ -66,3 +66,23 @@ async def save_user_token(db: AsyncSession, user: User, token: str):
     """登录后将 token 存入用户记录"""
     user.token = token
     await db.commit()
+
+
+async def ensure_admin_exists(db: AsyncSession) -> None:
+    """启动时检查超级管理员是否存在，不存在则自动创建（幂等）"""
+    from config.settings import settings
+    result = await db.execute(select(User).where(User.username == settings.ADMIN_USERNAME))
+    if result.scalar_one_or_none():
+        return  # 已存在，跳过
+
+    admin = User(
+        username=settings.ADMIN_USERNAME,
+        password=settings.ADMIN_PASSWORD,
+        nickname=settings.ADMIN_NICKNAME,
+        phone=settings.ADMIN_PHONE,
+        role="admin",
+        status=1,
+    )
+    db.add(admin)
+    await db.commit()
+    print(f"[init] 管理员账号已创建：{settings.ADMIN_USERNAME} / {settings.ADMIN_PASSWORD}")

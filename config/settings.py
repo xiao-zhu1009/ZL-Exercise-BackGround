@@ -7,4 +7,10 @@ class Settings:
     ALGORITHM: str = "HS256"
     TOKEN_EXPIRE_MINUTES: int = 24 * 60 * 30  # 30 天
 
+    # 超级管理员初始账号，首次启动若不存在则自动创建
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "123456"
+    ADMIN_NICKNAME: str = "超级管理员"
+    ADMIN_PHONE: str = "10000000000"
+
 settings = Settings()

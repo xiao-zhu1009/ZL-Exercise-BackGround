@@ -8,3 +8,4 @@ from models.diet import DietArticle, Food, DietRecord
 from models.course import Course, Reservation
 from models.training import BodyRecord, WorkoutRecord, TrainingPlan, CoachStudent
 from models.body_stats import UserBodyStats
+from models.coach_application import CoachApplication

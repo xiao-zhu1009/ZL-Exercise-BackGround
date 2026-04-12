@@ -21,7 +21,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     from models.user import User
     result = await db.execute(select(User).where(User.id == payload["user_id"], User.token == token))
-    if not result.scalar_one_or_none():
+    user = result.scalar_one_or_none()
+    if not user:
         raise HTTPException(status_code=401, detail="Token 已失效，请重新登录")
 
+    # 以数据库中的 role 为准，审批通过后无需重新登录即可生效
+    payload["role"] = user.role
     return payload

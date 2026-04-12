@@ -30,6 +30,8 @@ async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
         return json_fail("账号未注册", 401)
     if user.password != form.password:
         return json_fail("密码错误", 401)
+    if user.status == 0:
+        return json_fail("账号已被封禁，请联系管理员", 403)
 
     token = create_access_token({"user_id": user.id, "role": user.role})
     await save_user_token(db, user, token)
