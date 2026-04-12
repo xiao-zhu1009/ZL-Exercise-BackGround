@@ -1,8 +1,9 @@
 # api/admin_action.py
 # 管理员动作审核接口（需 admin 角色）
-# GET /admin/actions              → 全部动作列表，可按 status 筛选
-# PUT /admin/actions/{id}/review  → 审核：status=1 通过，status=2 驳回
-# PUT /admin/actions/{id}/offline → 下架已上线动作（status 改为 3）
+# GET /admin/actions                  → 全部动作列表，可按 status 筛选
+# GET /admin/actions/{id}/detail      → 单条动作完整详情（不限 status，供审核预览）
+# PUT /admin/actions/{id}/review      → 审核：status=1 通过，status=2 驳回
+# PUT /admin/actions/{id}/offline     → 下架已上线动作（status 改为 3）
 
 from typing import Optional
 from fastapi import APIRouter, Depends
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.session import get_db
 from schemas.action import ActionReview
 from CRUD.action import get_admin_actions, get_action_by_id, review_action
+from CRUD.user import get_user_by_id
 from utils.deps import get_current_user
 from utils.response import success, json_fail
 
@@ -21,6 +23,42 @@ router = APIRouter(prefix="/admin/actions", tags=["admin-actions"])
 def _require_admin(current_user: dict):
     if current_user.get("role") != "admin":
         return json_fail("无权限", 403)
+
+
+@router.get("/{action_id}/detail")
+async def action_detail(
+    action_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    管理员预览单条动作完整内容。
+    与用户端详情接口的区别：不过滤 status，待审核/已驳回/已下架都能查到，
+    且不触发 view_count +1（管理员预览不算用户浏览）。
+    """
+    err = _require_admin(current_user)
+    if err:
+        return err
+    action = await get_action_by_id(db, action_id)
+    if not action:
+        return json_fail("动作不存在", 404)
+    author = await get_user_by_id(db, action.author_id)
+    return success({
+        "id": action.id,
+        "title": action.title,
+        "body_part": action.body_part,
+        "category": action.category,
+        "difficulty": action.difficulty,
+        "cover_img": action.cover_img,
+        "video_url": action.video_url,
+        "description": action.description,
+        "steps": action.steps or [],
+        "cautions": action.cautions or [],
+        "status": action.status,
+        "reject_reason": action.reject_reason,
+        "author_name": author.nickname if author else "",
+        "created_at": action.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+    })
 
 
 @router.get("")
