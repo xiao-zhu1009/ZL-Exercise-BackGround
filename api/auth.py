@@ -21,7 +21,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # 测试用验证码，后续替换为真实短信服务
 FAKE_CODE = "123456"
 
-
+# 登录接口
 @router.post("/login")
 async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
     """登录：支持账号或手机号"""
@@ -45,7 +45,7 @@ async def login(form: LoginForm, db: AsyncSession = Depends(get_db)):
         "token": token
     }, "登录成功")
 
-
+# 模拟发送验证码接口
 @router.post("/send-code")
 async def send_code(form: SendCodeForm, db: AsyncSession = Depends(get_db)):
     """发送验证码（当前为测试模式，固定返回 123456）"""
@@ -53,7 +53,7 @@ async def send_code(form: SendCodeForm, db: AsyncSession = Depends(get_db)):
         return json_fail("该手机号已被注册", 400)
     return success(None, "验证码已发送（测试码：123456）")
 
-
+# 前端填写验证码验证接口
 @router.post("/verify-code")
 async def verify_code(form: VerifyCodeForm, db: AsyncSession = Depends(get_db)):
     """验证验证码：已注册手机号与错误验证码区分提示"""
@@ -63,7 +63,7 @@ async def verify_code(form: VerifyCodeForm, db: AsyncSession = Depends(get_db)):
         return json_fail("验证码错误或已过期", 400)
     return success(None, "验证通过")
 
-
+# 账号信息注册接口
 @router.post("/register")
 async def register(form: RegisterForm, db: AsyncSession = Depends(get_db)):
     """注册：先验证码校验，再检查账号唯一性，最后创建用户"""

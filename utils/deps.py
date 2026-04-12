@@ -12,6 +12,7 @@ from db.session import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# 根据前端返回的token解码获取例如{'user_id': 2, 'role': 'user', 'exp': 1778586456, 'jti': '5c3112a932a84199a8310f241f7aaae7'}
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     """解析 Token，返回 payload（含 user_id、role）"""
     try:
@@ -27,4 +28,5 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     # 以数据库中的 role 为准，审批通过后无需重新登录即可生效
     payload["role"] = user.role
+    print(f"解码后的payload: {payload}")
     return payload

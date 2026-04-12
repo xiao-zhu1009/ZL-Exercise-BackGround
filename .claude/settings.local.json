@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(python3 -c \"import docx; print\\('ok'\\)\")",
+      "Bash(pip install:*)"
     ]
   }
 }

@@ -33,7 +33,7 @@ def _fmt(action, author_name=""):
         "created_at": action.created_at.strftime("%Y-%m-%d %H:%M:%S"),
     }
 
-
+# user动作库列表数据获取接口
 @router.get("")
 async def list_actions(
     body_part: Optional[str] = None,
@@ -61,7 +61,7 @@ async def list_actions(
         "page_size": page_size,
     })
 
-
+# 获取单个动作详情接口
 @router.get("/{action_id}")
 async def action_detail(action_id: int, db: AsyncSession = Depends(get_db)):
     """获取动作详情，浏览数 +1"""

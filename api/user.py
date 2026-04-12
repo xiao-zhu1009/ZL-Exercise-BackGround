@@ -16,11 +16,12 @@ from CRUD.body_stats import get_body_stats, upsert_body_stats
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-
+# 获取user个人主页账号基本信息
 @router.get("/profile")
 async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """获取个人信息"""
     user = await get_user_by_id(db, current_user["user_id"])
+    print(f"获取用户基本信息接口中的user: {user}")
     if not user:
         return json_fail("用户不存在", 404)
     return success({
@@ -31,7 +32,7 @@ async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncS
         "avatar": user.avatar
     })
 
-
+# user个人主页修改账号信息
 @router.put("/profile")
 async def update_profile(form: ProfileUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """修改个人信息（body 里带 avatar: \"\" 可恢复默认头像）"""
@@ -45,7 +46,7 @@ _AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _AVATAR_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 _MAX_AVATAR_BYTES = 2 * 1024 * 1024
 
-
+# user个人主页上传头像接口
 @router.post("/avatar")
 async def upload_avatar(
     request: Request,
@@ -79,7 +80,7 @@ async def upload_avatar(
     await update_user_profile(db, user, avatar=url)
     return success({"avatar": url}, "头像已更新")
 
-
+# user个人主页身体指标获取
 @router.get("/body-stats")
 async def get_body_stats_api(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """获取身体指标"""
@@ -95,8 +96,7 @@ async def get_body_stats_api(current_user: dict = Depends(get_current_user), db:
         "hip": stats.hip,
         "whr": round(stats.whr, 2) if stats.whr else None
     })
-
-
+# user个人主页身体指标修改接口
 @router.put("/body-stats")
 async def update_body_stats(form: BodyStatsUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """修改身体指标，自动计算 BMI 和 WHR"""
@@ -105,8 +105,7 @@ async def update_body_stats(form: BodyStatsUpdate, current_user: dict = Depends(
         "bmi": round(stats.bmi, 1) if stats.bmi else None,
         "whr": round(stats.whr, 2) if stats.whr else None
     }, "保存成功")
-
-
+# user个人主页修改密码接口
 @router.put("/password")
 async def update_password(form: PasswordUpdate, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """修改密码"""

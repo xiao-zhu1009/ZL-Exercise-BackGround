@@ -124,7 +124,7 @@ async def upload_video(
 
     return success({"path": f"action_videos/{safe_name}"}, "上传成功")
 
-
+# 教练端动作投稿提交动作审核接口
 @router.post("")
 async def publish_action(
     form: ActionCreate,
@@ -138,7 +138,7 @@ async def publish_action(
     action = await create_action(db, current_user["user_id"], form.model_dump())
     return success({"id": action.id}, "提交成功，等待审核")
 
-
+# 教练端获取已经投稿的全部动作记录接口
 @router.get("")
 async def my_actions(
     current_user: dict = Depends(get_current_user),
@@ -157,10 +157,15 @@ async def my_actions(
         "difficulty": a.difficulty,
         "status": a.status,
         "reject_reason": a.reject_reason,
+        "cover_img": a.cover_img or "",   # 封面图相对路径，修改时回显用
+        "video_url": a.video_url or "",   # 视频相对路径，修改时回显用
+        "description": a.description or "",
+        "steps": a.steps or [],
+        "cautions": a.cautions or [],
         "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S"),
     } for a in actions])
 
-
+# 教练端修改某个待审核/已驳回的动作接口
 @router.put("/{action_id}")
 async def edit_action(
     action_id: int,
@@ -180,7 +185,7 @@ async def edit_action(
     await update_action(db, action, form.model_dump(exclude_unset=True))
     return success(None, "已重新提交审核")
 
-
+# 教练端删除某个待审核/已驳回的动作接口
 @router.delete("/{action_id}")
 async def delete_action(
     action_id: int,
