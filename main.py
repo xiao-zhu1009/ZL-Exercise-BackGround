@@ -17,6 +17,12 @@ from api.coach_action import router as coach_action_router
 from api.admin_action import router as admin_action_router
 from api.coach_application import router as coach_application_router
 from api.admin_user import router as admin_user_router
+from api.diet_article import router as diet_article_router
+from api.coach_diet_article import router as coach_diet_article_router
+from api.admin_diet_article import router as admin_diet_article_router
+from api.course import router as course_router
+from api.coach_course import router as coach_course_router
+from api.admin_course import router as admin_course_router
 
 
 @asynccontextmanager
@@ -62,3 +68,9 @@ app.include_router(coach_action_router, prefix="/api")  # 教练端：/coach/act
 app.include_router(admin_action_router, prefix="/api")  # 管理员：/admin/actions
 app.include_router(coach_application_router, prefix="/api")  # 教练申请
 app.include_router(admin_user_router, prefix="/api")         # 超管用户管理
+app.include_router(diet_article_router, prefix="/api")       # 用户端：GET /diet/articles
+app.include_router(coach_diet_article_router, prefix="/api") # 教练端：/coach/diet/articles
+app.include_router(admin_diet_article_router, prefix="/api") # 管理员：/admin/diet/articles
+app.include_router(course_router, prefix="/api")             # 用户端：/courses
+app.include_router(coach_course_router, prefix="/api")       # 教练端：/coach/courses
+app.include_router(admin_course_router, prefix="/api")       # 管理员：/admin/courses
