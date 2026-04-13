@@ -33,7 +33,9 @@ class Food(BaseModel):
     fat: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     fiber: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     category: Mapped[str] = mapped_column(String(50), nullable=False, default="")  # 主食/肉类/蔬菜/水果等
-    is_custom: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)  # 0=系统 1=用户自定义
+    is_custom: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)  # 0=系统库 1=教练投稿
+    status: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)     # 0=待审核 1=通过 2=驳回；系统预置默认1
+    reject_reason: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     created_by: Mapped[int] = mapped_column(Integer, nullable=True)
 
 

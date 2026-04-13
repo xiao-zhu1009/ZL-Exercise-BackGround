@@ -23,6 +23,9 @@ from api.admin_diet_article import router as admin_diet_article_router
 from api.course import router as course_router
 from api.coach_course import router as coach_course_router
 from api.admin_course import router as admin_course_router
+from api.diet_record import router as diet_record_router
+from api.coach_food import router as coach_food_router
+from api.admin_food import router as admin_food_router
 
 
 @asynccontextmanager
@@ -35,8 +38,10 @@ async def lifespan(app: FastAPI):
     # 建表完成后检查并创建管理员账号
     from db.session import AsyncSessionLocal
     from CRUD.user import ensure_admin_exists
+    from CRUD.diet_record import ensure_foods
     async with AsyncSessionLocal() as db:
         await ensure_admin_exists(db)
+        await ensure_foods(db)  # 写入系统预置食物（幂等）
 
     yield
 
@@ -74,3 +79,6 @@ app.include_router(admin_diet_article_router, prefix="/api") # 管理员：/admi
 app.include_router(course_router, prefix="/api")             # 用户端：/courses
 app.include_router(coach_course_router, prefix="/api")       # 教练端：/coach/courses
 app.include_router(admin_course_router, prefix="/api")       # 管理员：/admin/courses
+app.include_router(diet_record_router, prefix="/api")        # 饮食记录：/diet/foods/search  /diet/records
+app.include_router(coach_food_router, prefix="/api")         # 教练端食物投稿：/coach/foods
+app.include_router(admin_food_router, prefix="/api")         # 管理员食物审核：/admin/foods
