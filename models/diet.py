@@ -53,3 +53,18 @@ class DietRecord(BaseModel):
     carbs: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     fat: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
     record_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+
+class DietPlan(BaseModel):
+    """教练为学员制定的饮食计划"""
+    __tablename__ = "diet_plans"
+
+    coach_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    student_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    goal: Mapped[str] = mapped_column(String(50), nullable=False)              # 减脂/增肌/均衡/增重
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    content: Mapped[dict] = mapped_column(JSON, nullable=True)                 # 每日餐次安排
+    status: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)  # 0=已终止 1=进行中 2=已完成

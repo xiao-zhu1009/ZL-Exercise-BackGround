@@ -16,6 +16,7 @@ from CRUD.training import (
     create_training_plan, get_coach_students,
     get_student_detail_for_coach, get_student_recent_records, get_plans_by_student,
 )
+from CRUD.body_stats import get_body_stats
 from utils.deps import get_current_user
 from utils.response import success, json_fail
 
@@ -47,6 +48,7 @@ async def list_students(
             "nickname": user.nickname or user.username,
             "goal":     user.goal or "",
             "bind_at":  cs.bind_at.isoformat() if cs.bind_at else "",
+            "bind_id":  cs.id,   # 解绑时需要
         })
     return success(result)
 
@@ -57,7 +59,7 @@ async def student_detail(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询学员详情（含最近10条训练记录），验证归属"""
+    """查询学员详情（基本信息 + 身体指标 + 最近10条训练记录），验证归属"""
     err = _require_coach(current_user)
     if err:
         return err
@@ -66,11 +68,26 @@ async def student_detail(
     if not user:
         return json_fail("学员不存在或不属于该教练", 404)
 
+    stats = await get_body_stats(db, student_id)
     records = await get_student_recent_records(db, student_id)
+
     return success({
-        "id":       user.id,
-        "nickname": user.nickname or user.username,
-        "goal":     user.goal or "",
+        # 基本信息
+        "id":        user.id,
+        "nickname":  user.nickname or user.username,
+        "avatar":    user.avatar,
+        "phone":     user.phone,
+        "signature": user.signature,
+        "goal":      user.goal or "",
+        # 身体指标
+        "height":    float(stats.height)   if stats and stats.height   else None,
+        "weight":    float(stats.weight)   if stats and stats.weight   else None,
+        "bmi":       round(float(stats.bmi), 1) if stats and stats.bmi else None,
+        "body_fat":  float(stats.body_fat) if stats and stats.body_fat else None,
+        "waist":     float(stats.waist)    if stats and stats.waist    else None,
+        "hip":       float(stats.hip)      if stats and stats.hip      else None,
+        "whr":       round(float(stats.whr), 2) if stats and stats.whr else None,
+        # 最近训练记录
         "workout_records": [{
             "record_date":  r.record_date.isoformat(),
             "workout_type": r.workout_type,

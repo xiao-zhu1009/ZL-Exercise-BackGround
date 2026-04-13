@@ -52,5 +52,8 @@ class CoachStudent(BaseModel):
 
     coach_id: Mapped[int] = mapped_column(Integer, nullable=False)
     student_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)  # 0=已解绑 1=绑定中
+    # pending=待教练同意 active=已绑定 rejected=已拒绝 ended=已解绑
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    request_msg: Mapped[str] = mapped_column(String(255), nullable=False, default="")  # 申请留言
+    reject_reason: Mapped[str] = mapped_column(String(255), nullable=False, default="")  # 拒绝原因
     bind_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)

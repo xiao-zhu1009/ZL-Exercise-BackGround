@@ -20,6 +20,7 @@ from CRUD.training import (
     get_workout_records, create_workout_record, delete_workout_record,
     get_training_plans, get_daily_stats, get_type_stats, create_training_plan,
 )
+from CRUD.user import get_user_by_id
 from utils.deps import get_current_user
 from utils.response import success, json_fail
 
@@ -92,23 +93,73 @@ async def remove_record(
 
 @router.get("/training/plans")
 async def list_plans(
-    status: Optional[int] = None,   # 0=已终止 1=进行中 2=已完成，不传则全部
+    status: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询当前用户的训练计划列表"""
+    """查询当前用户的训练计划列表，教练指派的计划附带教练昵称"""
     plans = await get_training_plans(db, current_user["user_id"], status)
+
+    # 批量查教练昵称（coach_id=0 为自建，跳过）
+    coach_ids = list({p.coach_id for p in plans if p.coach_id > 0})
+    coach_map = {}
+    for cid in coach_ids:
+        u = await get_user_by_id(db, cid)
+        if u:
+            coach_map[cid] = u.nickname or u.username
+
     return success([{
-        "id":          p.id,
-        "title":       p.title,
-        "goal":        p.goal,
-        "start_date":  p.start_date.isoformat(),
-        "end_date":    p.end_date.isoformat(),
-        "description": p.description,
-        "content":     p.content,
-        "status":      p.status,
-        "coach_id":    p.coach_id,
+        "id":           p.id,
+        "title":        p.title,
+        "goal":         p.goal,
+        "start_date":   p.start_date.isoformat(),
+        "end_date":     p.end_date.isoformat(),
+        "description":  p.description,
+        "content":      p.content,
+        "status":       p.status,
+        "coach_id":     p.coach_id,
+        "coach_name":   coach_map.get(p.coach_id, "") if p.coach_id > 0 else "",
     } for p in plans])
+
+
+@router.get("/training/plans/{plan_id}")
+async def get_plan_detail(
+    plan_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询单个训练计划详情（仅本人可查）"""
+    from sqlalchemy import select
+    from models.training import TrainingPlan
+    result = await db.execute(
+        select(TrainingPlan).where(
+            TrainingPlan.id == plan_id,
+            TrainingPlan.student_id == current_user["user_id"],
+            TrainingPlan.is_deleted == 0,
+        )
+    )
+    plan = result.scalar_one_or_none()
+    if not plan:
+        return json_fail("计划不存在", 404)
+
+    coach_name = ""
+    if plan.coach_id > 0:
+        u = await get_user_by_id(db, plan.coach_id)
+        if u:
+            coach_name = u.nickname or u.username
+
+    return success({
+        "id":          plan.id,
+        "title":       plan.title,
+        "goal":        plan.goal,
+        "start_date":  plan.start_date.isoformat(),
+        "end_date":    plan.end_date.isoformat(),
+        "description": plan.description,
+        "content":     plan.content,
+        "status":      plan.status,
+        "coach_id":    plan.coach_id,
+        "coach_name":  coach_name,
+    })
 
 
 @router.post("/training/plans")
