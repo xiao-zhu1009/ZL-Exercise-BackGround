@@ -26,6 +26,8 @@ from api.admin_course import router as admin_course_router
 from api.diet_record import router as diet_record_router
 from api.coach_food import router as coach_food_router
 from api.admin_food import router as admin_food_router
+from api.training import router as training_router
+from api.coach_training import router as coach_training_router
 
 
 @asynccontextmanager
@@ -82,3 +84,5 @@ app.include_router(admin_course_router, prefix="/api")       # 管理员：/admi
 app.include_router(diet_record_router, prefix="/api")        # 饮食记录：/diet/foods/search  /diet/records
 app.include_router(coach_food_router, prefix="/api")         # 教练端食物投稿：/coach/foods
 app.include_router(admin_food_router, prefix="/api")         # 管理员食物审核：/admin/foods
+app.include_router(training_router, prefix="/api")           # 用户训练模块：/training/records /training/plans /training/stats
+app.include_router(coach_training_router, prefix="/api")     # 教练训练模块：/coach/students /coach/training/plans
