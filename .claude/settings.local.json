@@ -5,7 +5,8 @@
       "Bash(python3 -c \"import docx; print\\('ok'\\)\")",
       "Bash(pip install:*)",
       "Bash(xargs ls:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

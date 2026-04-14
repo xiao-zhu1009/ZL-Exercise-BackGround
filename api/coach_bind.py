@@ -11,10 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
 from utils.deps import get_current_user
-from utils.response import success, json_fail
+from utils.response import success, fail, json_fail
 from CRUD.training import (
     get_coaches_list, get_bind_record, create_bind_request,
-    get_my_coach, get_student_bind_requests, handle_bind_request,
+    get_my_coach, get_my_pending_apply, get_student_bind_requests, handle_bind_request,
     end_bind, get_bind_stats_for_admin, get_coach_summary_for_admin,
 )
 
@@ -65,14 +65,14 @@ async def apply_bind(
 
     # 不能绑定自己
     if form.coach_id == student_id:
-        return json_fail("不能绑定自己", 400)
+        return fail("不能绑定自己", 4001)
 
     existing = await get_bind_record(db, form.coach_id, student_id)
     if existing:
         if existing.status == "active":
-            return json_fail("您已绑定该教练", 400)
+            return fail("您已绑定该教练", 4002)
         if existing.status == "pending":
-            return json_fail("申请已提交，请等待教练处理", 400)
+            return fail("申请已提交，请等待教练处理", 4003)
         # ended/rejected 允许重新申请：更新记录
         existing.status = "pending"
         existing.request_msg = form.request_msg or ""
@@ -90,19 +90,36 @@ async def my_bind(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询当前学员的绑定状态（当前教练 + 最新申请状态）"""
+    """查询当前学员的绑定状态：active 绑定 + pending 申请（前端用于渲染按钮状态）"""
     student_id = current_user["user_id"]
-    row = await get_my_coach(db, student_id)
-    if not row:
-        return success(None)
-    coach, cs = row
+
+    active_row = await get_my_coach(db, student_id)
+    pending_row = await get_my_pending_apply(db, student_id)
+
+    active_info = None
+    if active_row:
+        coach, cs = active_row
+        active_info = {
+            "coach_id":  coach.id,
+            "nickname":  coach.nickname or coach.username,
+            "avatar":    coach.avatar,
+            "signature": coach.signature,
+            "bind_at":   cs.bind_at.isoformat() if cs.bind_at else "",
+            "bind_id":   cs.id,
+        }
+
+    pending_info = None
+    if pending_row:
+        coach, cs = pending_row
+        pending_info = {
+            "coach_id":  coach.id,
+            "nickname":  coach.nickname or coach.username,
+            "bind_id":   cs.id,
+        }
+
     return success({
-        "coach_id":   coach.id,
-        "nickname":   coach.nickname or coach.username,
-        "avatar":     coach.avatar,
-        "signature":  coach.signature,
-        "bind_at":    cs.bind_at.isoformat() if cs.bind_at else "",
-        "bind_id":    cs.id,
+        "active":  active_info,   # 当前绑定的教练，无则 null
+        "pending": pending_info,  # 待处理的申请，无则 null
     })
 
 

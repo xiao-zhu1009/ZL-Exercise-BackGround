@@ -213,6 +213,21 @@ async def get_my_coach(db: AsyncSession, student_id: int):
     return result.first()
 
 
+async def get_my_pending_apply(db: AsyncSession, student_id: int):
+    """查询学员当前待处理的绑定申请（status=pending），返回 (User, CoachStudent) 或 None"""
+    result = await db.execute(
+        select(User, CoachStudent)
+        .join(CoachStudent, CoachStudent.coach_id == User.id)
+        .where(
+            CoachStudent.student_id == student_id,
+            CoachStudent.status == "pending",
+            CoachStudent.is_deleted == 0,
+            User.is_deleted == 0,
+        )
+    )
+    return result.first()
+
+
 async def get_student_bind_requests(db: AsyncSession, coach_id: int, status: str = None):
     """教练端：查询收到的绑定申请，可按 status 筛选"""
     stmt = (
