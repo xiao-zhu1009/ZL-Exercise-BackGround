@@ -13,6 +13,7 @@ from utils.deps import get_current_user
 from utils.response import success, json_fail
 from CRUD.user import get_user_by_id, update_user_profile, update_user_password
 from CRUD.body_stats import get_body_stats, upsert_body_stats
+from CRUD.training import get_dashboard_stats
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -116,3 +117,13 @@ async def update_password(form: PasswordUpdate, current_user: dict = Depends(get
         return json_fail("旧密码错误", 400)
     await update_user_password(db, user, form.new_password)
     return success(None, "密码修改成功")
+
+
+@router.get("/dashboard")
+async def get_dashboard(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """用户看板聚合接口：本周训练统计、今日饮食、体重趋势、训练趋势、类型分布、热量趋势"""
+    data = await get_dashboard_stats(db, current_user["user_id"])
+    return success(data)

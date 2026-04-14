@@ -6,7 +6,9 @@
       "Bash(pip install:*)",
       "Bash(xargs ls:*)",
       "Bash(python:*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(sed -n '9,35p' D:/桌面/claude-ZL/ZL_BG_FastApi/models/training.py)",
+      "Bash(sed -n '42,65p' D:/桌面/claude-ZL/ZL_BG_FastApi/models/diet.py)"
     ]
   }
 }

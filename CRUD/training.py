@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.training import WorkoutRecord, TrainingPlan, CoachStudent
+from models.training import BodyRecord, WorkoutRecord, TrainingPlan, CoachStudent
 from models.user import User
 
 
@@ -314,3 +314,133 @@ async def get_coach_summary_for_admin(db: AsyncSession, page: int = 1, page_size
             "plan_count": plan_cnt.scalar(),
         })
     return data, total
+
+
+async def get_body_records_recent(db: AsyncSession, user_id: int, days: int = 30):
+    """查询用户近 N 天的体重记录，按日期升序"""
+    start = date.today() - timedelta(days=days - 1)
+    result = await db.execute(
+        select(BodyRecord)
+        .where(
+            BodyRecord.user_id == user_id,
+            BodyRecord.record_date >= start,
+            BodyRecord.is_deleted == 0,
+        )
+        .order_by(BodyRecord.record_date.asc())
+    )
+    return result.scalars().all()
+
+
+async def get_dashboard_stats(db: AsyncSession, user_id: int):
+    """看板聚合查询：本周训练统计、今日饮食、体重趋势、训练趋势、类型分布、热量趋势"""
+    from models.diet import DietRecord
+
+    today = date.today()
+    # 本周周一
+    week_start = today - timedelta(days=today.weekday())
+
+    # 1. 本周训练次数 + 消耗卡路里
+    week_workout = await db.execute(
+        select(
+            func.count(WorkoutRecord.id).label("count"),
+            func.coalesce(func.sum(WorkoutRecord.calories), 0).label("calories"),
+        ).where(
+            WorkoutRecord.user_id == user_id,
+            WorkoutRecord.record_date >= week_start,
+            WorkoutRecord.record_date <= today,
+            WorkoutRecord.is_deleted == 0,
+        )
+    )
+    ww = week_workout.first()
+
+    # 2. 今日摄入卡路里
+    today_diet = await db.execute(
+        select(func.coalesce(func.sum(DietRecord.calories), 0)).where(
+            DietRecord.user_id == user_id,
+            DietRecord.record_date == today,
+            DietRecord.is_deleted == 0,
+        )
+    )
+    calories_today = today_diet.scalar() or 0
+
+    # 3. 近 30 天体重记录
+    body_rows = await get_body_records_recent(db, user_id, 30)
+
+    # 4. 本周每天训练时长（周一~今天，补全 0）
+    week_daily = await db.execute(
+        select(
+            WorkoutRecord.record_date,
+            func.sum(WorkoutRecord.duration).label("duration"),
+            func.sum(WorkoutRecord.calories).label("calories"),
+        ).where(
+            WorkoutRecord.user_id == user_id,
+            WorkoutRecord.record_date >= week_start,
+            WorkoutRecord.record_date <= today,
+            WorkoutRecord.is_deleted == 0,
+        ).group_by(WorkoutRecord.record_date)
+    )
+    week_daily_map = {r.record_date: r for r in week_daily.all()}
+
+    day_labels = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    workout_week = []
+    for i in range(7):
+        d = week_start + timedelta(days=i)
+        r = week_daily_map.get(d)
+        workout_week.append({
+            "date": d.isoformat(),
+            "day": day_labels[i],
+            "duration": int(r.duration) if r else 0,
+            "calories": int(r.calories) if r else 0,
+        })
+
+    # 5. 近 30 天训练类型分布
+    type_rows = await db.execute(
+        select(
+            WorkoutRecord.workout_type,
+            func.count(WorkoutRecord.id).label("count"),
+        ).where(
+            WorkoutRecord.user_id == user_id,
+            WorkoutRecord.record_date >= today - timedelta(days=29),
+            WorkoutRecord.is_deleted == 0,
+        ).group_by(WorkoutRecord.workout_type)
+    )
+    workout_type_stats = [
+        {"type": r.workout_type or "其他", "count": r.count}
+        for r in type_rows.all()
+    ]
+
+    # 6. 近 7 天每日热量摄入（补全 0）
+    diet_start = today - timedelta(days=6)
+    diet_rows = await db.execute(
+        select(
+            DietRecord.record_date,
+            func.sum(DietRecord.calories).label("calories"),
+        ).where(
+            DietRecord.user_id == user_id,
+            DietRecord.record_date >= diet_start,
+            DietRecord.record_date <= today,
+            DietRecord.is_deleted == 0,
+        ).group_by(DietRecord.record_date)
+    )
+    diet_map = {r.record_date: float(r.calories) for r in diet_rows.all()}
+    diet_week = []
+    for i in range(7):
+        d = diet_start + timedelta(days=i)
+        diet_week.append({"date": d.isoformat(), "calories": round(diet_map.get(d, 0), 1)})
+
+    # 最新体重
+    current_weight = float(body_rows[-1].weight) if body_rows else None
+
+    return {
+        "workout_count_week":   int(ww.count),
+        "calories_burned_week": int(ww.calories),
+        "calories_intake_today": round(float(calories_today), 1),
+        "current_weight":       current_weight,
+        "body_records": [
+            {"date": r.record_date.isoformat(), "weight": float(r.weight)}
+            for r in body_rows if r.weight is not None
+        ],
+        "workout_week":        workout_week,
+        "workout_type_stats":  workout_type_stats,
+        "diet_week":           diet_week,
+    }
