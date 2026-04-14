@@ -9,6 +9,69 @@ from models.training import BodyRecord, WorkoutRecord, TrainingPlan, CoachStuden
 from models.user import User
 
 
+# ── 身体记录 ──────────────────────────────────────────────────
+
+async def get_body_records(db: AsyncSession, user_id: int, days: int = 90):
+    """查询用户近 N 天的身体记录，按日期升序（用于图表）"""
+    start = date.today() - timedelta(days=days - 1)
+    result = await db.execute(
+        select(BodyRecord)
+        .where(BodyRecord.user_id == user_id, BodyRecord.record_date >= start, BodyRecord.is_deleted == 0)
+        .order_by(BodyRecord.record_date.asc())
+    )
+    return result.scalars().all()
+
+
+async def get_latest_body_record(db: AsyncSession, user_id: int):
+    """查询用户最近一条身体记录，新增时用于预填数据"""
+    result = await db.execute(
+        select(BodyRecord)
+        .where(BodyRecord.user_id == user_id, BodyRecord.is_deleted == 0)
+        .order_by(BodyRecord.record_date.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_body_record(db: AsyncSession, user_id: int, data: dict):
+    """新增一条身体记录"""
+    record = BodyRecord(user_id=user_id, **data)
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def update_body_record(db: AsyncSession, record_id: int, user_id: int, data: dict):
+    """更新身体记录，仅本人可操作"""
+    result = await db.execute(
+        select(BodyRecord).where(BodyRecord.id == record_id, BodyRecord.user_id == user_id, BodyRecord.is_deleted == 0)
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        return None
+    for k, v in data.items():
+        setattr(record, k, v)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_body_record(db: AsyncSession, record_id: int, user_id: int) -> bool:
+    """软删除身体记录，仅本人可操作"""
+    result = await db.execute(
+        select(BodyRecord).where(BodyRecord.id == record_id, BodyRecord.user_id == user_id, BodyRecord.is_deleted == 0)
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        return False
+    record.is_deleted = 1
+    await db.commit()
+    return True
+
+
+# ── 训练记录 ──────────────────────────────────────────────────
+
 async def get_workout_records(db: AsyncSession, user_id: int, start: date, end: date):
     """查询用户指定日期区间内的训练记录，按日期倒序"""
     result = await db.execute(
@@ -28,6 +91,25 @@ async def create_workout_record(db: AsyncSession, user_id: int, data: dict):
     """新增一条训练记录"""
     record = WorkoutRecord(user_id=user_id, **data)
     db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def update_workout_record(db: AsyncSession, record_id: int, user_id: int, data: dict):
+    """更新训练记录，仅本人可操作；返回更新后的对象，不存在则返回 None"""
+    result = await db.execute(
+        select(WorkoutRecord).where(
+            WorkoutRecord.id == record_id,
+            WorkoutRecord.user_id == user_id,
+            WorkoutRecord.is_deleted == 0,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        return None
+    for k, v in data.items():
+        setattr(record, k, v)
     await db.commit()
     await db.refresh(record)
     return record

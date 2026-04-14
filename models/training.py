@@ -11,10 +11,10 @@ class BodyRecord(BaseModel):
 
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     record_date: Mapped[date] = mapped_column(Date, nullable=False)
-    height: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)
-    weight: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)
-    bmi: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)
-    body_fat: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)
+    weight: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)    # 体重 kg
+    body_fat: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)  # 体脂率 %
+    waist: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)     # 腰围 cm
+    chest: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=True)     # 胸围 cm
     remark: Mapped[str] = mapped_column(String(255), nullable=False, default="")
 
 

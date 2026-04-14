@@ -1,12 +1,17 @@
 # api/training.py
 # 用户端训练模块接口（需登录）
-# GET    /training/records?start=&end=        查询训练记录列表
-# POST   /training/records                    新增训练记录
-# DELETE /training/records/{id}              删除训练记录
-# GET    /training/plans?status=             查询训练计划列表
-# POST   /training/plans                     用户自建训练计划
-# GET    /training/stats?days=               近N天每日时长+卡路里统计
-# GET    /training/stats/type?days=          近N天训练类型分布
+# GET    /training/body-records?days=       查询身体记录列表
+# POST   /training/body-records             新增身体记录
+# PUT    /training/body-records/{id}        修改身体记录
+# DELETE /training/body-records/{id}        删除身体记录
+# GET    /training/records?start=&end=      查询训练记录列表
+# POST   /training/records                  新增训练记录
+# PUT    /training/records/{id}             修改训练记录
+# DELETE /training/records/{id}             删除训练记录
+# GET    /training/plans?status=            查询训练计划列表
+# POST   /training/plans                    用户自建训练计划
+# GET    /training/stats?days=              近N天每日时长+卡路里统计
+# GET    /training/stats/type?days=         近N天训练类型分布
 
 from datetime import date, timedelta
 from typing import Optional
@@ -15,9 +20,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
-from schemas.training import WorkoutRecordCreate, TrainingPlanCreate
+from schemas.training import WorkoutRecordCreate, TrainingPlanCreate, BodyRecordCreate
 from CRUD.training import (
-    get_workout_records, create_workout_record, delete_workout_record,
+    get_body_records, get_latest_body_record, create_body_record, update_body_record, delete_body_record,
+    get_workout_records, create_workout_record, update_workout_record, delete_workout_record,
     get_training_plans, get_daily_stats, get_type_stats, create_training_plan,
 )
 from CRUD.user import get_user_by_id
@@ -26,6 +32,86 @@ from utils.response import success, json_fail
 
 router = APIRouter(tags=["training"])
 
+
+# ── 身体记录 ──────────────────────────────────────────────────
+
+def _fmt_body(r):
+    """统一格式化身体记录返回字段"""
+    return {
+        "id":          r.id,
+        "record_date": r.record_date.isoformat(),
+        "weight":      float(r.weight)   if r.weight   is not None else None,
+        "body_fat":    float(r.body_fat) if r.body_fat is not None else None,
+        "waist":       float(r.waist)    if r.waist    is not None else None,
+        "chest":       float(r.chest)    if r.chest    is not None else None,
+        "remark":      r.remark or "",
+    }
+
+
+@router.get("/training/body-records")
+async def list_body_records(
+    days: int = 90,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """查询近 N 天身体记录，按日期升序（用于图表）"""
+    if days < 1 or days > 365:
+        return json_fail("days 范围 1~365", 400)
+    records = await get_body_records(db, current_user["user_id"], days)
+    return success([_fmt_body(r) for r in records])
+
+
+@router.get("/training/body-records/latest")
+async def get_latest_body(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取最近一条身体记录，新增时用于预填表单"""
+    record = await get_latest_body_record(db, current_user["user_id"])
+    return success(_fmt_body(record) if record else None)
+
+
+@router.post("/training/body-records")
+async def add_body_record(
+    form: BodyRecordCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """新增一条身体记录"""
+    if form.weight is not None and form.weight <= 0:
+        return json_fail("体重必须大于 0", 400)
+    record = await create_body_record(db, current_user["user_id"], form.model_dump())
+    return success(_fmt_body(record), "记录成功")
+
+
+@router.put("/training/body-records/{record_id}")
+async def edit_body_record(
+    record_id: int,
+    form: BodyRecordCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改身体记录，仅本人可操作"""
+    record = await update_body_record(db, record_id, current_user["user_id"], form.model_dump())
+    if not record:
+        return json_fail("记录不存在", 404)
+    return success(_fmt_body(record), "修改成功")
+
+
+@router.delete("/training/body-records/{record_id}")
+async def remove_body_record(
+    record_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除身体记录（软删除）"""
+    ok = await delete_body_record(db, record_id, current_user["user_id"])
+    if not ok:
+        return json_fail("记录不存在", 404)
+    return success(None, "已删除")
+
+
+# ── 训练记录 ──────────────────────────────────────────────────
 
 @router.get("/training/records")
 async def list_records(
@@ -50,6 +136,7 @@ async def list_records(
         "calories":     r.calories,
         "workout_type": r.workout_type,
         "note":         r.note,
+        "extra":        r.extra,
     } for r in records])
 
 
@@ -75,7 +162,37 @@ async def add_record(
         "calories":     record.calories,
         "workout_type": record.workout_type,
         "note":         record.note,
+        "extra":        record.extra,
     }, "添加成功")
+
+
+@router.put("/training/records/{record_id}")
+async def edit_record(
+    record_id: int,
+    form: WorkoutRecordCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改训练记录（仅本人可操作）"""
+    if form.duration <= 0:
+        return json_fail("训练时长必须大于 0", 400)
+    if form.calories < 0:
+        return json_fail("卡路里不能为负数", 400)
+    if not form.workout_type.strip():
+        return json_fail("训练类型不能为空", 400)
+
+    record = await update_workout_record(db, record_id, current_user["user_id"], form.model_dump())
+    if not record:
+        return json_fail("记录不存在", 404)
+    return success({
+        "id":           record.id,
+        "record_date":  record.record_date.isoformat(),
+        "duration":     record.duration,
+        "calories":     record.calories,
+        "workout_type": record.workout_type,
+        "note":         record.note,
+        "extra":        record.extra,
+    }, "修改成功")
 
 
 @router.delete("/training/records/{record_id}")

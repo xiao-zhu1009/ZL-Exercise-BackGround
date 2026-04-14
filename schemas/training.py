@@ -1,9 +1,19 @@
 # schemas/training.py
-# 训练模块请求/响应 Schema：训练记录新增、训练计划新增
+# 训练模块请求/响应 Schema：身体记录、训练记录新增、训练计划新增
 
 from datetime import date
 from typing import Optional
 from pydantic import BaseModel
+
+
+class BodyRecordCreate(BaseModel):
+    """新增/修改身体记录请求体"""
+    record_date: date
+    weight: Optional[float] = None      # 体重 kg
+    body_fat: Optional[float] = None    # 体脂率 %
+    waist: Optional[float] = None       # 腰围 cm
+    chest: Optional[float] = None       # 胸围 cm
+    remark: Optional[str] = ""
 
 
 class WorkoutRecordCreate(BaseModel):
@@ -13,6 +23,8 @@ class WorkoutRecordCreate(BaseModel):
     calories: int           # 消耗卡路里，必须 >= 0
     workout_type: str       # 训练类型：力量/有氧/瑜伽/球类/其他
     note: Optional[str] = ""
+    # 详细模式动作列表，结构：{ mode: "detail", exercises: [{name, sets, reps, weight, unit, note}] }
+    extra: Optional[dict] = None
 
 
 class TrainingPlanCreate(BaseModel):
