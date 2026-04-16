@@ -31,7 +31,7 @@ class RejectBindForm(BaseModel):
 
 
 # ── 用户端 ────────────────────────────────────────────────
-
+# 获取教练数据接口
 @router.get("/coaches")
 async def list_coaches(
     keyword: Optional[str] = None,
@@ -53,7 +53,7 @@ async def list_coaches(
         "page_size": page_size,
     })
 
-
+# 用户端申请绑定教练接口
 @router.post("/coach-bind/apply")
 async def apply_bind(
     form: BindApplyForm,

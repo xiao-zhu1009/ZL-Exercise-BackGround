@@ -105,7 +105,7 @@ async def course_detail(course_id: int, db: AsyncSession = Depends(get_db)):
     data["description"] = course.description or ""
     return success(data)
 
-
+# 用户端预约课程接口
 @router.post("/{course_id}/reserve")
 async def reserve_course(
     course_id: int,
@@ -133,7 +133,7 @@ async def reserve_course(
     reservation = await create_reservation(db, current_user["user_id"], course_id)
     return success({"reservation_id": reservation.id}, "申请成功，等待教练确认")
 
-
+# 用户端取消课程预约
 @router.delete("/reservations/{reservation_id}")
 async def cancel(
     reservation_id: int,

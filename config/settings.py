@@ -13,4 +13,8 @@ class Settings:
     ADMIN_NICKNAME: str = "超级管理员"
     ADMIN_PHONE: str = "10000000000"
 
+    # 头像等静态资源写入 users.avatar 的绝对地址前缀（scheme+host+port，无路径）。
+    # 留空则用当前请求的 Host；若手机访问局域网 IP而后端自认 127.0.0.1，请设为例如 http://192.168.x.x:8009
+    PUBLIC_BASE_URL: str = ""
+
 settings = Settings()

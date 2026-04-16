@@ -12,6 +12,12 @@ class CoachProfileUpdate(BaseModel):
     phone:      Optional[str] = None
     signature:  Optional[str] = None
     goal:       Optional[str] = None
+    # 来自 user_body_stats 表
+    height:    Optional[float] = None
+    weight:    Optional[float] = None
+    body_fat:  Optional[float] = None
+    waist:     Optional[float] = None
+    hip:       Optional[float] = None
     # 来自 coach_profiles 表
     real_name:      Optional[str] = None
     gender:         Optional[int] = None   # 0=未设置 1=男 2=女

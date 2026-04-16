@@ -1,7 +1,7 @@
 # api/coach_profile.py
 # 教练主页接口
 # GET  /coach/profile          教练查看自己的完整主页
-# PUT  /coach/profile          教练修改主页信息
+# PUT  /coach/profile          教练修改主页信息（含身体指标）
 # PUT  /coach/profile/password 教练修改密码
 # POST /coach/profile/avatar   教练上传头像
 # GET  /coaches/{id}           用户端查看教练公开主页（已有 /coaches 列表，这里补详情）
@@ -22,6 +22,7 @@ from CRUD.coach_profile import (
     get_full_coach_info, get_public_coach_info,
 )
 from CRUD.user import get_user_by_id, update_user_profile, update_user_password
+from CRUD.body_stats import upsert_body_stats_from_partial
 
 router = APIRouter(tags=["coach-profile"])
 
@@ -37,7 +38,7 @@ def _require_coach(current_user: dict):
 
 
 # ── 教练端 ────────────────────────────────────────────────
-
+# 获取教练端基本信息
 @router.get("/coach/profile")
 async def get_my_profile(
     current_user: dict = Depends(get_current_user),
@@ -53,14 +54,14 @@ async def get_my_profile(
         return json_fail("用户不存在", 404)
     return success(info)
 
-
+# 修改教练端基本信息
 @router.put("/coach/profile")
 async def update_my_profile(
     form: CoachProfileUpdate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """教练修改主页信息（users 字段 + coach_profiles 字段分别更新）"""
+    """教练修改主页信息（users + coach_profiles + user_body_stats 分表更新）"""
     err = _require_coach(current_user)
     if err:
         return err
@@ -83,6 +84,14 @@ async def update_my_profile(
     if profile_fields:
         profile = await get_or_create_coach_profile(db, user.id)
         await update_coach_profile(db, profile, profile_fields)
+
+    stats_fields = form.model_dump(
+        include={"height", "weight", "body_fat", "waist", "hip"},
+        exclude_unset=True,
+    )
+    # 更新user_body_stats表字段
+    if stats_fields:
+        await upsert_body_stats_from_partial(db, user.id, stats_fields)
 
     return success(None, "保存成功")
 
@@ -146,7 +155,7 @@ async def upload_avatar(
 
 
 # ── 用户端：查看教练公开主页 ──────────────────────────────
-
+# 用户端获取教练基本信息接口
 @router.get("/coaches/{coach_id}")
 async def get_coach_public_profile(
     coach_id: int,

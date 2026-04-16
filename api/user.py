@@ -22,7 +22,6 @@ router = APIRouter(prefix="/user", tags=["user"])
 async def get_profile(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """获取个人信息"""
     user = await get_user_by_id(db, current_user["user_id"])
-    print(f"获取用户基本信息接口中的user: {user}")
     if not user:
         return json_fail("用户不存在", 404)
     return success({
@@ -55,6 +54,10 @@ async def upload_avatar(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    print(f"request: {request}")
+    print(f"file: {file}")
+    print(f"current_user: {current_user}")
+    print(f"db: {db}")
     """上传自定义头像，返回可访问 URL 并写入 users.avatar"""
     if file.content_type not in _AVATAR_TYPES:
         return json_fail("请上传 JPG、PNG、GIF 或 WebP 图片", 400)
