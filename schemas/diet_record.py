@@ -34,12 +34,12 @@ class DietRecordUpdate(BaseModel):
 class FoodCreate(BaseModel):
     name: str
     unit: str = "g"
-    calories: float = 0
-    protein: float = 0
-    carbs: float = 0
-    fat: float = 0
-    fiber: float = 0
-    category: str = ""   # 主食/肉类/蔬菜/水果/乳制品/坚果/豆制品/补剂/其他
+    calories: float = 0   # 热量(kcal)，每100g/ml的含量
+    protein: float = 0    # 蛋白质(g)，每100g/ml的含量
+    carbs: float = 0      # 碳水化合物(g)，每100g/ml的含量
+    fat: float = 0        # 脂肪(g)，每100g/ml的含量
+    fiber: float = 0      # 膳食纤维(g)，每100g/ml的含量
+    category: str = ""    # 主食/肉类/蔬菜/水果/乳制品/坚果/豆制品/补剂/其他
 
 
 class FoodReview(BaseModel):

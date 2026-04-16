@@ -27,11 +27,11 @@ class Food(BaseModel):
 
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False, default="g")
-    calories: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
-    protein: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
-    carbs: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
-    fat: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
-    fiber: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)
+    calories: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)      # 热量(kcal)，每100g/ml
+    protein: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)       # 蛋白质(g)，每100g/ml
+    carbs: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)         # 碳水化合物(g)，每100g/ml
+    fat: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)           # 脂肪(g)，每100g/ml
+    fiber: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, default=0)         # 膳食纤维(g)，每100g/ml
     category: Mapped[str] = mapped_column(String(50), nullable=False, default="")  # 主食/肉类/蔬菜/水果等
     is_custom: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)  # 0=系统库 1=教练投稿
     status: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)     # 0=待审核 1=通过 2=驳回；系统预置默认1
