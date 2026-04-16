@@ -11,7 +11,6 @@
 # delete_coach_food → 教练删除待审核/驳回的投稿
 # get_admin_foods   → 管理员查食物投稿列表（可按 status 筛选）
 # review_food       → 管理员通过/驳回食物投稿
-# ensure_foods      → 启动时写入系统预置食物（幂等）
 
 from datetime import date as date_type
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -191,50 +190,3 @@ async def review_food(db: AsyncSession, food_id: int, approve: bool, reject_reas
     return food
 
 
-# 系统预置食物数据（每 100g 的营养素）
-_PRESET_FOODS = [
-    ("鸡胸肉", "g", 165, 31.0, 0.0, 3.6, 0.0, "肉类"),
-    ("猪里脊", "g", 143, 20.2, 0.0, 7.9, 0.0, "肉类"),
-    ("牛腱子", "g", 106, 17.9, 0.0, 4.2, 0.0, "肉类"),
-    ("三文鱼", "g", 208, 20.4, 0.0, 13.4, 0.0, "鱼类"),
-    ("鸡蛋", "g", 144, 12.7, 1.5, 9.0, 0.0, "蛋类"),
-    ("牛奶", "ml", 61, 3.2, 4.8, 3.2, 0.0, "乳制品"),
-    ("希腊酸奶", "g", 97, 9.0, 3.6, 5.0, 0.0, "乳制品"),
-    ("米饭(熟)", "g", 116, 2.6, 25.6, 0.3, 0.3, "主食"),
-    ("燕麦", "g", 389, 16.9, 66.3, 6.9, 10.6, "主食"),
-    ("全麦面包", "g", 247, 9.0, 41.3, 3.4, 6.9, "主食"),
-    ("红薯", "g", 86, 1.6, 20.1, 0.1, 3.0, "主食"),
-    ("西兰花", "g", 34, 2.8, 6.6, 0.4, 2.6, "蔬菜"),
-    ("菠菜", "g", 23, 2.9, 3.6, 0.4, 2.2, "蔬菜"),
-    ("番茄", "g", 18, 0.9, 3.9, 0.2, 1.2, "蔬菜"),
-    ("香蕉", "g", 89, 1.1, 22.8, 0.3, 2.6, "水果"),
-    ("苹果", "g", 52, 0.3, 13.8, 0.2, 2.4, "水果"),
-    ("蓝莓", "g", 57, 0.7, 14.5, 0.3, 2.4, "水果"),
-    ("花生", "g", 567, 25.8, 16.1, 49.2, 8.5, "坚果"),
-    ("杏仁", "g", 579, 21.2, 21.6, 49.9, 12.5, "坚果"),
-    ("橄榄油", "ml", 884, 0.0, 0.0, 100.0, 0.0, "油脂"),
-    ("豆腐", "g", 76, 8.1, 1.9, 4.8, 0.3, "豆制品"),
-    ("黑豆", "g", 341, 36.0, 33.6, 15.9, 10.2, "豆制品"),
-    ("蛋白粉", "g", 400, 80.0, 10.0, 5.0, 0.0, "补剂"),
-]
-
-
-async def ensure_foods(db: AsyncSession):
-    """启动时幂等写入系统预置食物，已存在则跳过"""
-    count = (await db.execute(
-        select(func.count(Food.id)).where(Food.is_custom == 0, Food.is_deleted == 0)
-    )).scalar()
-    if count >= len(_PRESET_FOODS):
-        return  # 已初始化，跳过
-
-    for name, unit, cal, pro, carb, fat, fiber, cat in _PRESET_FOODS:
-        exists = (await db.execute(
-            select(Food.id).where(Food.name == name, Food.is_custom == 0)
-        )).scalar_one_or_none()
-        if not exists:
-            db.add(Food(
-                name=name, unit=unit, calories=cal, protein=pro,
-                carbs=carb, fat=fat, fiber=fiber, category=cat,
-                is_custom=0, status=1  # 系统预置直接通过
-            ))
-    await db.commit()

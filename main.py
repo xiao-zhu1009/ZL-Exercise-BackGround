@@ -44,10 +44,8 @@ async def lifespan(app: FastAPI):
     # 建表完成后检查并创建管理员账号
     from db.session import AsyncSessionLocal
     from CRUD.user import ensure_admin_exists
-    from CRUD.diet_record import ensure_foods
     async with AsyncSessionLocal() as db:
         await ensure_admin_exists(db)
-        await ensure_foods(db)  # 写入系统预置食物（幂等）
 
     yield
 
