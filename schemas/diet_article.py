@@ -10,7 +10,7 @@ from typing import Optional
 
 class ArticleCreate(BaseModel):
     title: str
-    category: str                        # 增肌餐/减脂餐/均衡饮食/补剂知识
+    category: str                        # 饮食/训练/新手/误区/身材管理/健康/工具/计划
     cover_img: str = ""                  # 封面图相对路径，由上传接口返回
     content: str = ""                    # 正文 HTML
     summary: str = ""                    # 摘要，最多 500 字符

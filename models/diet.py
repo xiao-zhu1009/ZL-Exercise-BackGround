@@ -11,7 +11,7 @@ class DietArticle(BaseModel):
 
     author_id: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    category: Mapped[str] = mapped_column(String(30), nullable=False)          # 增肌餐/减脂餐/均衡饮食/补剂知识
+    category: Mapped[str] = mapped_column(String(30), nullable=False)          # 饮食/训练/新手/误区/身材管理/健康/工具/计划
     cover_img: Mapped[str] = mapped_column(String(500), nullable=False, default="")
     content: Mapped[str] = mapped_column(Text, nullable=True)
     summary: Mapped[str] = mapped_column(String(500), nullable=False, default="")

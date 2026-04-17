@@ -26,11 +26,11 @@ def _require_admin(current_user: dict = Depends(get_current_user)):
 
 @router.get("/statistics")
 async def get_statistics(
-    granularity: str = Query("month", regex="^(month|day)$"),  # month=近6个月 day=近30天
+    granularity: str = Query("day", regex="^(month|day)$"),  # month=近6个月 day=近30天
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(_require_admin)
 ):
-    """汇总各业务表数量及用户注册趋势，granularity=month 按月/day 按日"""
+    """汇总各业务表数量及用户注册趋势；默认 day=近30天按日，month=近6个月按月"""
 
     # 总用户数（未删除）
     total_users = (await db.execute(
