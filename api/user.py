@@ -121,7 +121,7 @@ async def update_password(form: PasswordUpdate, current_user: dict = Depends(get
     await update_user_password(db, user, form.new_password)
     return success(None, "密码修改成功")
 
-
+# 用户端数据看板接口
 @router.get("/dashboard")
 async def get_dashboard(
     current_user: dict = Depends(get_current_user),
