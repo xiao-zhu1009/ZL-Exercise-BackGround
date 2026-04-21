@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.training import BodyRecord, WorkoutRecord, TrainingPlan, CoachStudent
+from models.training import BodyRecord, TrainingRecord, TrainingPlan, CoachStudent
 from models.user import User
 
 
@@ -75,21 +75,21 @@ async def delete_body_record(db: AsyncSession, record_id: int, user_id: int) -> 
 async def get_workout_records(db: AsyncSession, user_id: int, start: date, end: date):
     """查询用户指定日期区间内的训练记录，按日期倒序"""
     result = await db.execute(
-        select(WorkoutRecord)
+        select(TrainingRecord)
         .where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= start,
-            WorkoutRecord.record_date <= end,
-            WorkoutRecord.is_deleted == 0,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= start,
+            TrainingRecord.record_date <= end,
+            TrainingRecord.is_deleted == 0,
         )
-        .order_by(WorkoutRecord.record_date.desc())
+        .order_by(TrainingRecord.record_date.desc())
     )
     return result.scalars().all()
 
 
 async def create_workout_record(db: AsyncSession, user_id: int, data: dict):
     """新增一条训练记录"""
-    record = WorkoutRecord(user_id=user_id, **data)
+    record = TrainingRecord(user_id=user_id, **data)
     db.add(record)
     await db.commit()
     await db.refresh(record)
@@ -99,10 +99,10 @@ async def create_workout_record(db: AsyncSession, user_id: int, data: dict):
 async def update_workout_record(db: AsyncSession, record_id: int, user_id: int, data: dict):
     """更新训练记录，仅本人可操作；返回更新后的对象，不存在则返回 None"""
     result = await db.execute(
-        select(WorkoutRecord).where(
-            WorkoutRecord.id == record_id,
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.is_deleted == 0,
+        select(TrainingRecord).where(
+            TrainingRecord.id == record_id,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.is_deleted == 0,
         )
     )
     record = result.scalar_one_or_none()
@@ -118,10 +118,10 @@ async def update_workout_record(db: AsyncSession, record_id: int, user_id: int, 
 async def delete_workout_record(db: AsyncSession, record_id: int, user_id: int) -> bool:
     """软删除训练记录，仅本人可操作"""
     result = await db.execute(
-        select(WorkoutRecord).where(
-            WorkoutRecord.id == record_id,
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.is_deleted == 0,
+        select(TrainingRecord).where(
+            TrainingRecord.id == record_id,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.is_deleted == 0,
         )
     )
     record = result.scalar_one_or_none()
@@ -149,18 +149,18 @@ async def get_daily_stats(db: AsyncSession, user_id: int, start: date, end: date
     """按天汇总训练时长和卡路里，用于折线/柱状图"""
     result = await db.execute(
         select(
-            WorkoutRecord.record_date,
-            func.sum(WorkoutRecord.duration).label("duration"),
-            func.sum(WorkoutRecord.calories).label("calories"),
+            TrainingRecord.record_date,
+            func.sum(TrainingRecord.duration).label("duration"),
+            func.sum(TrainingRecord.calories).label("calories"),
         )
         .where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= start,
-            WorkoutRecord.record_date <= end,
-            WorkoutRecord.is_deleted == 0,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= start,
+            TrainingRecord.record_date <= end,
+            TrainingRecord.is_deleted == 0,
         )
-        .group_by(WorkoutRecord.record_date)
-        .order_by(WorkoutRecord.record_date)
+        .group_by(TrainingRecord.record_date)
+        .order_by(TrainingRecord.record_date)
     )
     return result.all()
 
@@ -169,16 +169,16 @@ async def get_type_stats(db: AsyncSession, user_id: int, start: date, end: date)
     """按训练类型汇总次数，用于饼图"""
     result = await db.execute(
         select(
-            WorkoutRecord.workout_type,
-            func.count(WorkoutRecord.id).label("count"),
+            TrainingRecord.workout_type,
+            func.count(TrainingRecord.id).label("count"),
         )
         .where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= start,
-            WorkoutRecord.record_date <= end,
-            WorkoutRecord.is_deleted == 0,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= start,
+            TrainingRecord.record_date <= end,
+            TrainingRecord.is_deleted == 0,
         )
-        .group_by(WorkoutRecord.workout_type)
+        .group_by(TrainingRecord.workout_type)
     )
     return result.all()
 
@@ -224,9 +224,9 @@ async def get_student_detail_for_coach(db: AsyncSession, coach_id: int, student_
 async def get_student_recent_records(db: AsyncSession, student_id: int, limit: int = 10):
     """查询学员最近 N 条训练记录"""
     result = await db.execute(
-        select(WorkoutRecord)
-        .where(WorkoutRecord.user_id == student_id, WorkoutRecord.is_deleted == 0)
-        .order_by(WorkoutRecord.record_date.desc())
+        select(TrainingRecord)
+        .where(TrainingRecord.user_id == student_id, TrainingRecord.is_deleted == 0)
+        .order_by(TrainingRecord.record_date.desc())
         .limit(limit)
     )
     return result.scalars().all()
@@ -424,13 +424,13 @@ async def get_dashboard_stats(db: AsyncSession, user_id: int):
     # 1. 本周训练次数 + 消耗卡路里
     week_workout = await db.execute(
         select(
-            func.count(WorkoutRecord.id).label("count"),
-            func.coalesce(func.sum(WorkoutRecord.calories), 0).label("calories"),
+            func.count(TrainingRecord.id).label("count"),
+            func.coalesce(func.sum(TrainingRecord.calories), 0).label("calories"),
         ).where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= week_start,
-            WorkoutRecord.record_date <= today,
-            WorkoutRecord.is_deleted == 0,
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= week_start,
+            TrainingRecord.record_date <= today,
+            TrainingRecord.is_deleted == 0,
         )
     )
     ww = week_workout.first()
@@ -451,15 +451,15 @@ async def get_dashboard_stats(db: AsyncSession, user_id: int):
     # 4. 本周每天训练时长（周一~今天，补全 0）
     week_daily = await db.execute(
         select(
-            WorkoutRecord.record_date,
-            func.sum(WorkoutRecord.duration).label("duration"),
-            func.sum(WorkoutRecord.calories).label("calories"),
+            TrainingRecord.record_date,
+            func.sum(TrainingRecord.duration).label("duration"),
+            func.sum(TrainingRecord.calories).label("calories"),
         ).where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= week_start,
-            WorkoutRecord.record_date <= today,
-            WorkoutRecord.is_deleted == 0,
-        ).group_by(WorkoutRecord.record_date)
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= week_start,
+            TrainingRecord.record_date <= today,
+            TrainingRecord.is_deleted == 0,
+        ).group_by(TrainingRecord.record_date)
     )
     week_daily_map = {r.record_date: r for r in week_daily.all()}
 
@@ -478,13 +478,13 @@ async def get_dashboard_stats(db: AsyncSession, user_id: int):
     # 5. 近 30 天训练类型分布
     type_rows = await db.execute(
         select(
-            WorkoutRecord.workout_type,
-            func.count(WorkoutRecord.id).label("count"),
+            TrainingRecord.workout_type,
+            func.count(TrainingRecord.id).label("count"),
         ).where(
-            WorkoutRecord.user_id == user_id,
-            WorkoutRecord.record_date >= today - timedelta(days=29),
-            WorkoutRecord.is_deleted == 0,
-        ).group_by(WorkoutRecord.workout_type)
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.record_date >= today - timedelta(days=29),
+            TrainingRecord.is_deleted == 0,
+        ).group_by(TrainingRecord.workout_type)
     )
     workout_type_stats = [
         {"type": r.workout_type or "其他", "count": r.count}

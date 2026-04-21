@@ -18,8 +18,8 @@ class BodyRecord(BaseModel):
     remark: Mapped[str] = mapped_column(String(255), nullable=False, default="")             # 备注
 
 
-class WorkoutRecord(BaseModel):
-    __tablename__ = "workout_records"
+class TrainingRecord(BaseModel):
+    __tablename__ = "training_records"
 
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)                            # 记录所属用户
     record_date: Mapped[date] = mapped_column(Date, nullable=False)                          # 训练日期

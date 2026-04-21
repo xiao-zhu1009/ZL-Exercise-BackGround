@@ -16,23 +16,23 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 
-from models.diet import DietArticle
+from models.diet import Article
 from models.user import User
 
 
 async def get_articles(db: AsyncSession, category=None, keyword=None, page=1, page_size=12):
     """用户端：获取已上线文章列表，支持分类筛选和关键词搜索"""
-    where = [DietArticle.status == 1, DietArticle.is_deleted == 0]
+    where = [Article.status == 1, Article.is_deleted == 0]
     if category:
-        where.append(DietArticle.category == category)
+        where.append(Article.category == category)
     if keyword:
-        where.append(DietArticle.title.contains(keyword))
+        where.append(Article.title.contains(keyword))
 
-    total = (await db.execute(select(func.count(DietArticle.id)).where(*where))).scalar()
+    total = (await db.execute(select(func.count(Article.id)).where(*where))).scalar()
 
     result = await db.execute(
-        select(DietArticle).where(*where)
-        .order_by(DietArticle.view_count.desc())
+        select(Article).where(*where)
+        .order_by(Article.view_count.desc())
         .offset((page - 1) * page_size).limit(page_size)
     )
     return result.scalars().all(), total
@@ -41,7 +41,7 @@ async def get_articles(db: AsyncSession, category=None, keyword=None, page=1, pa
 async def get_article_by_id(db: AsyncSession, article_id: int):
     """按 ID 查文章（含软删除过滤）"""
     result = await db.execute(
-        select(DietArticle).where(DietArticle.id == article_id, DietArticle.is_deleted == 0)
+        select(Article).where(Article.id == article_id, Article.is_deleted == 0)
     )
     return result.scalar_one_or_none()
 
@@ -49,15 +49,15 @@ async def get_article_by_id(db: AsyncSession, article_id: int):
 async def increment_view(db: AsyncSession, article_id: int):
     """浏览数原子 +1"""
     await db.execute(
-        update(DietArticle).where(DietArticle.id == article_id)
-        .values(view_count=DietArticle.view_count + 1)
+        update(Article).where(Article.id == article_id)
+        .values(view_count=Article.view_count + 1)
     )
     await db.commit()
 
 
 async def create_article(db: AsyncSession, author_id: int, data: dict):
     """教练创建文章，初始状态为待审核"""
-    article = DietArticle(author_id=author_id, **data)
+    article = Article(author_id=author_id, **data)
     db.add(article)
     await db.commit()
     await db.refresh(article)
@@ -67,14 +67,14 @@ async def create_article(db: AsyncSession, author_id: int, data: dict):
 async def get_coach_articles(db: AsyncSession, author_id: int):
     """教练查自己投稿的全部文章"""
     result = await db.execute(
-        select(DietArticle)
-        .where(DietArticle.author_id == author_id, DietArticle.is_deleted == 0)
-        .order_by(DietArticle.created_at.desc())
+        select(Article)
+        .where(Article.author_id == author_id, Article.is_deleted == 0)
+        .order_by(Article.created_at.desc())
     )
     return result.scalars().all()
 
 
-async def update_article(db: AsyncSession, article: DietArticle, fields: dict):
+async def update_article(db: AsyncSession, article: Article, fields: dict):
     """更新被驳回的文章，重置为待审核"""
     for k, v in fields.items():
         if v is not None:
@@ -84,7 +84,7 @@ async def update_article(db: AsyncSession, article: DietArticle, fields: dict):
     await db.commit()
 
 
-async def soft_delete_article(db: AsyncSession, article: DietArticle):
+async def soft_delete_article(db: AsyncSession, article: Article):
     """软删除"""
     article.is_deleted = 1
     await db.commit()
@@ -92,23 +92,23 @@ async def soft_delete_article(db: AsyncSession, article: DietArticle):
 
 async def get_admin_articles(db: AsyncSession, status=None, page=1, page_size=20):
     """管理员查文章列表，含投稿教练昵称"""
-    where = [DietArticle.is_deleted == 0]
+    where = [Article.is_deleted == 0]
     if status is not None:
-        where.append(DietArticle.status == status)
+        where.append(Article.status == status)
 
-    total = (await db.execute(select(func.count(DietArticle.id)).where(*where))).scalar()
+    total = (await db.execute(select(func.count(Article.id)).where(*where))).scalar()
 
     result = await db.execute(
-        select(DietArticle, User.nickname)
-        .join(User, DietArticle.author_id == User.id)
+        select(Article, User.nickname)
+        .join(User, Article.author_id == User.id)
         .where(*where)
-        .order_by(DietArticle.created_at.desc())
+        .order_by(Article.created_at.desc())
         .offset((page - 1) * page_size).limit(page_size)
     )
     return result.all(), total
 
 
-async def review_article(db: AsyncSession, article: DietArticle, status: int,
+async def review_article(db: AsyncSession, article: Article, status: int,
                          reject_reason: str, admin_id: int):
     """审核文章：通过(1) 或 驳回(2)"""
     article.status = status
@@ -118,7 +118,7 @@ async def review_article(db: AsyncSession, article: DietArticle, status: int,
     await db.commit()
 
 
-async def offline_article(db: AsyncSession, article: DietArticle):
+async def offline_article(db: AsyncSession, article: Article):
     """下架已上线文章"""
     article.status = 3
     await db.commit()

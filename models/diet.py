@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.session import BaseModel
 
 
-class DietArticle(BaseModel):
-    __tablename__ = "diet_articles"
+class Article(BaseModel):
+    __tablename__ = "articles"
 
     author_id: Mapped[int] = mapped_column(Integer, nullable=False)                          # 发布教练的user_id
     title: Mapped[str] = mapped_column(String(200), nullable=False)                          # 文章标题

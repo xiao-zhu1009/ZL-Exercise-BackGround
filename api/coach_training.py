@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from db.session import get_db
-from models.training import WorkoutRecord
+from models.training import TrainingRecord
 from schemas.training import TrainingPlanCreate
 from CRUD.training import (
     create_training_plan, get_coach_students,

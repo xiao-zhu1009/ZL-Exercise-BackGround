@@ -9,7 +9,7 @@ from sqlalchemy import select, func
 from db.session import get_db
 from models.user import User
 from models.action import Action
-from models.diet import DietArticle
+from models.diet import Article
 from models.course import Course, Reservation
 from utils.deps import get_current_user
 from utils.response import success
@@ -49,7 +49,7 @@ async def get_statistics(
 
     # 已上线文章数
     total_articles = (await db.execute(
-        select(func.count()).select_from(DietArticle).where(DietArticle.status == 1, DietArticle.is_deleted == 0)
+        select(func.count()).select_from(Article).where(Article.status == 1, Article.is_deleted == 0)
     )).scalar()
 
     # 有效课程数：招募中(1)/满员(2)/已结束(3) 均算已上线

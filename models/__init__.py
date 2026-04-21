@@ -4,9 +4,9 @@
 
 from models.user import User
 from models.action import Action
-from models.diet import DietArticle, Food, DietRecord, DietPlan
+from models.diet import Article, Food, DietRecord, DietPlan
 from models.course import Course, Reservation
-from models.training import BodyRecord, WorkoutRecord, TrainingPlan, CoachStudent
+from models.training import BodyRecord, TrainingRecord, TrainingPlan, CoachStudent
 from models.body_stats import UserBodyStats
 from models.coach_application import CoachApplication
 from models.coach_profile import CoachProfile
