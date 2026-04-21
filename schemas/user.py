@@ -53,3 +53,11 @@ class BodyStatsUpdate(BaseModel):
 class PasswordUpdate(BaseModel):
     old_password: str
     new_password: str
+
+class ForgotPasswordSendCode(BaseModel):
+    phone: str
+
+class ResetPasswordForm(BaseModel):
+    phone: str
+    code: str
+    new_password: str

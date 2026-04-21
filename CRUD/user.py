@@ -56,6 +56,12 @@ async def update_user_profile(db: AsyncSession, user: User, **fields):
     await db.commit()
 
 
+async def get_user_by_phone(db: AsyncSession, phone: str):
+    """按手机号查用户（忘记密码流程用）"""
+    result = await db.execute(select(User).where(User.phone == phone))
+    return result.scalar_one_or_none()
+
+
 async def update_user_password(db: AsyncSession, user: User, new_password: str):
     """更新用户密码"""
     user.password = new_password
