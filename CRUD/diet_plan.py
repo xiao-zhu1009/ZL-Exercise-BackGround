@@ -1,5 +1,5 @@
 # CRUD/diet_plan.py
-# 饮食计划数据层：教练创建/查询/更新，学员查询
+# 饮食计划数据层：教练创建/查询/更新，学员查询，学员自拟计划
 
 from datetime import date
 from sqlalchemy import select
@@ -19,9 +19,10 @@ async def create_diet_plan(db: AsyncSession, coach_id: int, student_id: int, dat
 
 
 async def get_diet_plans_for_student(db: AsyncSession, student_id: int, status: int = None):
-    """学员查询自己的饮食计划列表"""
+    """学员查询自己的饮食计划列表（教练制定，coach_id != 0）"""
     stmt = select(DietPlan).where(
         DietPlan.student_id == student_id,
+        DietPlan.coach_id != 0,
         DietPlan.is_deleted == 0,
     )
     if status is not None:
@@ -56,3 +57,28 @@ async def update_diet_plan_status(db: AsyncSession, plan: DietPlan, status: int)
     plan.status = status
     await db.commit()
     return plan
+
+
+# ── 学员自拟计划（coach_id=0 标识自建） ────────────────────
+
+async def create_self_diet_plan(db: AsyncSession, student_id: int, data: dict) -> DietPlan:
+    """学员创建自拟饮食计划，coach_id=0"""
+    plan = DietPlan(coach_id=0, student_id=student_id, **data)
+    db.add(plan)
+    await db.commit()
+    await db.refresh(plan)
+    return plan
+
+
+async def get_self_diet_plans(db: AsyncSession, student_id: int, status: int = None):
+    """学员查询自拟饮食计划列表（coach_id=0）"""
+    stmt = select(DietPlan).where(
+        DietPlan.student_id == student_id,
+        DietPlan.coach_id == 0,
+        DietPlan.is_deleted == 0,
+    )
+    if status is not None:
+        stmt = stmt.where(DietPlan.status == status)
+    stmt = stmt.order_by(DietPlan.start_date.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()

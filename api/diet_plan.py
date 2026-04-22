@@ -3,8 +3,11 @@
 # 教练端：POST /coach/diet-plans          为学员创建饮食计划
 #         GET  /coach/diet-plans          查询为某学员制定的计划列表 ?student_id=
 #         PUT  /coach/diet-plans/{id}/status  更新计划状态
-# 学员端：GET  /diet-plans               查询自己的饮食计划列表 ?status=
+# 学员端：GET  /diet-plans               查询教练制定的饮食计划列表 ?status=
 #         GET  /diet-plans/{id}          查询单条饮食计划详情
+#         POST /diet-plans/self          学员创建自拟饮食计划
+#         GET  /diet-plans/self          查询自拟饮食计划列表 ?status=
+#         PUT  /diet-plans/self/{id}/status  更新自拟计划状态
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,11 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.session import get_db
 from utils.deps import get_current_user
 from utils.response import success, json_fail
-from schemas.diet_plan import DietPlanCreate, DietPlanStatusUpdate
+from schemas.diet_plan import DietPlanCreate, DietPlanStatusUpdate, SelfDietPlanCreate
 from CRUD.diet_plan import (
     create_diet_plan, get_diet_plans_for_student,
     get_diet_plan_by_id, get_diet_plans_by_coach_student,
-    update_diet_plan_status,
+    update_diet_plan_status, create_self_diet_plan, get_self_diet_plans,
 )
 from CRUD.training import get_student_detail_for_coach
 from CRUD.user import get_user_by_id
@@ -114,7 +117,7 @@ async def update_plan_status(
     return success(None, "已更新")
 
 
-# ── 学员端 ────────────────────────────────────────────────
+# ── 学员端（教练制定） ─────────────────────────────────────
 
 @router.get("/diet-plans")
 async def student_list_plans(
@@ -122,7 +125,7 @@ async def student_list_plans(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """学员查询自己的饮食计划列表（含教练昵称）"""
+    """学员查询教练制定的饮食计划列表（含教练昵称）"""
     plans = await get_diet_plans_for_student(db, current_user["user_id"], status)
 
     coach_ids = list({p.coach_id for p in plans})
@@ -133,6 +136,52 @@ async def student_list_plans(
             coach_map[cid] = u.nickname or u.username
 
     return success([_plan_dict(p, coach_map.get(p.coach_id, "")) for p in plans])
+
+
+@router.get("/diet-plans/self")
+async def student_list_self_plans(
+    status: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """学员查询自拟饮食计划列表"""
+    plans = await get_self_diet_plans(db, current_user["user_id"], status)
+    return success([_plan_dict(p) for p in plans])
+
+
+@router.post("/diet-plans/self")
+async def student_create_self_plan(
+    form: SelfDietPlanCreate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """学员创建自拟饮食计划"""
+    if form.end_date < form.start_date:
+        return json_fail("结束日期不能早于开始日期", 400)
+
+    data = form.model_dump()
+    plan = await create_self_diet_plan(db, current_user["user_id"], data)
+    return success({"id": plan.id}, "自拟计划创建成功")
+
+
+@router.put("/diet-plans/self/{plan_id}/status")
+async def student_update_self_plan_status(
+    plan_id: int,
+    form: DietPlanStatusUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """学员更新自拟饮食计划状态（0=终止 2=完成）"""
+    if form.status not in (0, 2):
+        return json_fail("status 只允许 0（终止）或 2（完成）", 400)
+
+    plan = await get_diet_plan_by_id(db, plan_id)
+    # coach_id=0 且归属当前学员才允许操作
+    if not plan or plan.coach_id != 0 or plan.student_id != current_user["user_id"]:
+        return json_fail("计划不存在", 404)
+
+    await update_diet_plan_status(db, plan, form.status)
+    return success(None, "已更新")
 
 
 @router.get("/diet-plans/{plan_id}")
@@ -147,8 +196,9 @@ async def student_get_plan(
         return json_fail("计划不存在", 404)
 
     coach_name = ""
-    u = await get_user_by_id(db, plan.coach_id)
-    if u:
-        coach_name = u.nickname or u.username
+    if plan.coach_id != 0:
+        u = await get_user_by_id(db, plan.coach_id)
+        if u:
+            coach_name = u.nickname or u.username
 
     return success(_plan_dict(plan, coach_name))

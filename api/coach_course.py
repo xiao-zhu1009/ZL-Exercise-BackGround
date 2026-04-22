@@ -153,12 +153,13 @@ async def course_reservations(
     rows = await get_course_reservations(db, course_id)
     return success([{
         "reservation_id": r.id,
-        "user_id": r.user_id,
-        "user_name": nickname or "",
-        "status": r.status,
-        "cancel_reason": r.cancel_reason,
-        "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-    } for r, nickname in rows])
+        "user_id":        r.user_id,
+        "student_name":   nickname or "",
+        "phone":          phone or "",
+        "status":         r.status,
+        "cancel_reason":  r.cancel_reason,
+        "created_at":     r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+    } for r, nickname, phone in rows])
 
 
 @router.put("/{course_id}")

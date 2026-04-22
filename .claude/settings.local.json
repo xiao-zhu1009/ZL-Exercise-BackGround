@@ -8,7 +8,8 @@
       "Bash(python:*)",
       "Bash(xargs grep:*)",
       "Bash(sed -n '9,35p' D:/桌面/claude-ZL/ZL_BG_FastApi/models/training.py)",
-      "Bash(sed -n '42,65p' D:/桌面/claude-ZL/ZL_BG_FastApi/models/diet.py)"
+      "Bash(sed -n '42,65p' D:/桌面/claude-ZL/ZL_BG_FastApi/models/diet.py)",
+      "Bash(grep -E \"^d|\\\\.py$|\\\\.md$|\\\\.txt$|\\\\.json$|\\\\.yaml$|\\\\.yml$\")"
     ]
   }
 }

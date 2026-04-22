@@ -192,9 +192,9 @@ async def cancel_reservation(db: AsyncSession, reservation: Reservation):
 
 
 async def get_course_reservations(db: AsyncSession, course_id: int):
-    """教练查某课程的全部预约申请，含用户昵称"""
+    """教练查某课程的全部预约申请，含用户昵称和手机号"""
     result = await db.execute(
-        select(Reservation, User.nickname)
+        select(Reservation, User.nickname, User.phone)
         .join(User, Reservation.user_id == User.id)
         .where(Reservation.course_id == course_id)
         .order_by(Reservation.created_at.desc())
